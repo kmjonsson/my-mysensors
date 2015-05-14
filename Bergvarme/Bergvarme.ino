@@ -4,6 +4,9 @@
 #include <DallasTemperature.h>
 #include <OneWire.h>
 
+#include <DHT.h>  
+
+
 #define BUSSES 4
 #define ONE_WIRE_BUS 5 // Pin where dallase sensor is connected 
 #define MAX_ATTACHED_DS18B20 5
@@ -18,6 +21,18 @@ boolean receivedConfig = false;
 boolean metric = true; 
 // Initialize temperature message
 MyMessage msg(0,V_TEMP);
+
+#define CHILD_ID_HUM (BUSSES+0)
+#define CHILD_ID_TEMP (BUSSES+1)
+#define HUMIDITY_SENSOR_DIGITAL_PIN 3
+
+DHT dht;
+
+float lastTemp;
+float lastHum;
+
+MyMessage msgHum(CHILD_ID_HUM, V_HUM);
+MyMessage msgTemp(CHILD_ID_TEMP, V_TEMP);
 
 void setup()  
 { 
@@ -36,6 +51,8 @@ void setup()
     Serial.print("] = ");
     Serial.println(numSensors[i]);
   }
+  
+  dht.setup(HUMIDITY_SENSOR_DIGITAL_PIN);
 
   // Startup and initialize MySensors library. Set callback for incoming messages. 
   gw.begin(NULL); 
@@ -49,6 +66,11 @@ void setup()
       gw.present(i, S_TEMP);
     }
   }
+  
+  gw.present(CHILD_ID_HUM, S_HUM);
+  gw.present(CHILD_ID_TEMP, S_TEMP);
+  
+  metric = gw.getConfig().isMetric;
 }
 
 long readVcc() {
@@ -91,6 +113,32 @@ void loop()
       lastTemperature[i]=temperature;     
     }
   }
+  
+  delay(dht.getMinimumSamplingPeriod());
+
+  float temperature = dht.getTemperature();
+  if (isnan(temperature)) {
+      Serial.println("Failed reading temperature from DHT");
+  } else if (temperature != lastTemp) {
+    lastTemp = temperature;
+    if (!metric) {
+      temperature = dht.toFahrenheit(temperature);
+    }
+    gw.send(msgTemp.set(temperature, 1));
+    Serial.print("T: ");
+    Serial.println(temperature);
+  }
+  
+  float humidity = dht.getHumidity();
+  if (isnan(humidity)) {
+      Serial.println("Failed reading humidity from DHT");
+  } else if (humidity != lastHum) {
+      lastHum = humidity;
+      gw.send(msgHum.set(humidity, 1));
+      Serial.print("H: ");
+      Serial.println(humidity);
+  }
+  
   gw.sendBatteryLevel(readVcc()/100);  
   gw.sleep(SLEEP_TIME);
 }
