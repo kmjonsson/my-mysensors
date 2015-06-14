@@ -11,7 +11,7 @@
 #define ONE_WIRE_BUS 5 // Pin where dallase sensor is connected 
 #define MAX_ATTACHED_DS18B20 5
 
-unsigned long SLEEP_TIME = 30*1000; // (30s) Sleep time between reads (in milliseconds)
+unsigned long SLEEP_TIME = 300*1000; // (30s) Sleep time between reads (in milliseconds)
 OneWire *oneWire[BUSSES];
 DallasTemperature *sensors[BUSSES];
 MySensor gw;
@@ -26,6 +26,13 @@ MyMessage msg(0,V_TEMP);
 #define CHILD_ID_TEMP (BUSSES+1)
 #define HUMIDITY_SENSOR_DIGITAL_PIN 3
 
+#define SOIL_HUM1_ID (CHILD_ID_TEMP+1)
+#define SOIL_HUM1_AIN A0
+#define SOIL_HUM1_POWER A1
+#define SOIL_HUM2_ID (CHILD_ID_TEMP+2)
+#define SOIL_HUM2_AIN A2
+#define SOIL_HUM2_POWER A3
+
 DHT dht;
 
 float lastTemp;
@@ -33,6 +40,9 @@ float lastHum;
 
 MyMessage msgHum(CHILD_ID_HUM, V_HUM);
 MyMessage msgTemp(CHILD_ID_TEMP, V_TEMP);
+
+MyMessage msgSoilHum1(SOIL_HUM1_ID, V_HUM);
+MyMessage msgSoilHum2(SOIL_HUM2_ID, V_HUM);
 
 void setup()  
 { 
@@ -69,6 +79,9 @@ void setup()
   
   gw.present(CHILD_ID_HUM, S_HUM);
   gw.present(CHILD_ID_TEMP, S_TEMP);
+
+//  gw.present(SOIL_HUM1_ID, S_HUM);
+//  gw.present(SOIL_HUM2_ID, S_HUM);
   
   metric = gw.getConfig().isMetric;
 }
@@ -138,6 +151,35 @@ void loop()
       Serial.print("H: ");
       Serial.println(humidity);
   }
+
+/*
+  uint32_t hum=0;
+  digitalWrite(SOIL_HUM1_POWER,HIGH);
+  delay(250);
+  for(int i=0;i<10250;i++) {
+    hum += analogRead(SOIL_HUM1_AIN);
+  }
+  hum /= 104960;
+  hum = analogRead(SOIL_HUM2_AIN);
+  Serial.print("H1: ");
+  Serial.println(hum);
+
+  gw.send(msgSoilHum1.set(hum, 1));
+  digitalWrite(SOIL_HUM1_POWER,LOW);
+
+  hum=0;
+  digitalWrite(SOIL_HUM2_POWER,HIGH);
+  delay(250);
+  for(int i=0;i<10250;i++) {
+    hum += analogRead(SOIL_HUM2_AIN);
+  }
+  hum /= 104960;
+  hum = analogRead(SOIL_HUM2_AIN);
+  Serial.print("H2: ");
+  Serial.println(hum);
+  gw.send(msgSoilHum2.set(hum, 1));
+  digitalWrite(SOIL_HUM2_POWER,LOW);
+*/
   
   gw.sendBatteryLevel(readVcc()/100);  
   gw.sleep(SLEEP_TIME);
